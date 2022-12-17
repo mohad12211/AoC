@@ -9,7 +9,7 @@ fn part1(input: &str) {
     let contained = input
         .lines()
         .map(|l| {
-            l.split(|c| c == ',' || c == '-')
+            l.split([',', '-'])
                 .map(|n| n.parse().unwrap())
                 .collect::<Vec<i32>>()
         })
@@ -22,7 +22,7 @@ fn part2(input: &str) {
     let overlap = input
         .lines()
         .map(|l| {
-            l.split(|c| c == ',' || c == '-')
+            l.split([',', '-'])
                 .map(|n| n.parse().unwrap())
                 .collect::<Vec<i32>>()
         })
