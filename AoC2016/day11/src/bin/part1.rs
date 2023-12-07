@@ -131,17 +131,10 @@ impl Lobby {
 fn bfs(lobby: Lobby) -> Option<i32> {
     let mut q = VecDeque::new();
     let mut seen = Vec::new();
-    let mut steps = 1;
 
-    q.push_back(Some(lobby));
-    q.push_back(None);
+    q.push_back((lobby, 0));
 
-    while let Some(lobby) = q.pop_front() {
-        let Some(lobby) = lobby else {
-            steps += 1;
-            q.push_back(None);
-            continue;
-        };
+    while let Some((lobby, steps)) = q.pop_front() {
         if seen.contains(&lobby) {
             continue;
         }
@@ -149,9 +142,9 @@ fn bfs(lobby: Lobby) -> Option<i32> {
             let mut lobby = lobby.clone();
             lobby.apply_move(m);
             if lobby.is_done() {
-                return Some(steps);
+                return Some(steps + 1);
             } else {
-                q.push_back(Some(lobby));
+                q.push_back((lobby, steps + 1));
             }
         }
         seen.push(lobby);
