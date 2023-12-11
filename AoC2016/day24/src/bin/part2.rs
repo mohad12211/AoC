@@ -44,13 +44,14 @@ impl Map {
     fn bfs(&mut self, grid: Vec<Vec<char>>) -> Option<usize> {
         let mut queue: VecDeque<(Map, usize)> = VecDeque::new();
         let mut visited: HashSet<Map> = HashSet::new();
+        let (start_x, start_y) = (self.x, self.y);
         queue.push_back((self.clone(), 0));
 
         while let Some((map, steps)) = queue.pop_front() {
             if visited.contains(&map) {
                 continue;
             }
-            if map.targets.is_empty() {
+            if map.targets.is_empty() && map.x == start_x && map.y == start_y {
                 return Some(steps);
             }
             for next_map in self.next_maps(&map, &grid) {
