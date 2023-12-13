@@ -60,7 +60,6 @@ impl FromStr for Ins {
     }
 }
 
-// TODO: optimize this according to the hint given in the problem
 fn main() {
     // let input = include_str!("input.test.txt");
     let input = include_str!("input.txt");
@@ -70,6 +69,48 @@ fn main() {
     let mut ip = 0;
 
     while let Some(&instruction) = instructions.get(ip) {
+        // optimize
+        //
+        // cpy x c
+        // inc r
+        // dec c
+        // jnz c -2
+        // dec y
+        // jnz y -5
+        //
+        // which is multipying `x` by `y` and adding the result to `r`,
+        // `c` is a counter that starts at `x`. we add one into `r` and dec `c` until `c` is 0
+        // (effectively adding `x` to `r`),
+        // the previous addition is done until `y` is zero
+        // (effectively adding `x` to `r`, `y` times)
+        // and at the end, both `c` and `y` will be zero
+        if let Some(
+            &[Ins::Cpy(x, c), Ins::Inc(r), Ins::Dec(_c), Ins::Jnz(__c, Operand::Val(-2)), Ins::Dec(_y), Ins::Jnz(y, Operand::Val(-5))],
+        ) = instructions.get(ip..(ip + 6))
+        {
+            let x_val = match x {
+                Operand::Reg(reg) => regs[reg],
+                Operand::Val(val) => val,
+            };
+            let y_val = match y {
+                Operand::Reg(reg) => regs[reg],
+                Operand::Val(val) => val,
+            };
+            regs[r] += x_val * y_val;
+            let c = match c {
+                Operand::Reg(reg) => reg,
+                Operand::Val(_) => panic!("c should be a register"),
+            };
+            let y = match y {
+                Operand::Reg(reg) => reg,
+                Operand::Val(_) => panic!("y should be a register"),
+            };
+            regs[c] = 0;
+            regs[y] = 0;
+            ip += 6;
+            continue;
+        }
+
         match instruction {
             Ins::Cpy(src, dst) => 'cpy: {
                 let src = match src {
