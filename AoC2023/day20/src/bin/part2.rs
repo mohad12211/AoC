@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt::Display,
-};
+use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug, Clone, Copy)]
 enum ModuleKind {
@@ -23,21 +20,21 @@ impl Module {
         let mut response_pulses = Vec::new();
         match self.kind {
             ModuleKind::FlipFlop => {
-                if pulse.pulse == 0 {
-                    self.state ^= 1;
-                    for output in &self.outputs {
-                        response_pulses.push(Pulse {
-                            src: self.name.clone(),
-                            dst: output.to_string(),
-                            pulse: self.state,
-                        });
-                    }
+                if pulse.pulse == 1 {
+                    return response_pulses;
+                }
+                self.state ^= 1;
+                for output in &self.outputs {
+                    response_pulses.push(Pulse {
+                        src: self.name.clone(),
+                        dst: output.to_string(),
+                        pulse: self.state,
+                    });
                 }
             }
             ModuleKind::Conjuction => {
                 self.state = pulse.pulse;
-                let x = self.inputs.get_mut(&pulse.src).unwrap();
-                *x = pulse.pulse;
+                *self.inputs.get_mut(&pulse.src).unwrap() = pulse.pulse;
                 if self.inputs.values().all(|&i| i == 1) {
                     for output in &self.outputs {
                         response_pulses.push(Pulse {
@@ -77,90 +74,100 @@ struct Pulse {
     dst: String,
 }
 
-impl Display for Pulse {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} -{}-> {}",
-            self.src,
-            if self.pulse == 0 { "low" } else { "high" },
-            self.dst
-        )
-    }
-}
-
 fn main() {
     // let input = include_str!("input.test.txt");
     let input = include_str!("input.txt");
 
     let mut modules = HashMap::new();
     for line in input.lines() {
-        let (mut left, right) = line.split_once(" -> ").unwrap();
-        let kind = match &left[0..1] {
+        let (mut module_name, module_outputs) = line.split_once(" -> ").unwrap();
+        let kind = match &module_name[0..1] {
             "%" => {
-                left = left.strip_prefix('%').unwrap();
+                module_name = module_name.strip_prefix('%').unwrap();
                 ModuleKind::FlipFlop
             }
             "&" => {
-                left = left.strip_prefix('&').unwrap();
+                module_name = module_name.strip_prefix('&').unwrap();
                 ModuleKind::Conjuction
             }
             "b" => ModuleKind::Broadcast,
             _ => unreachable!(),
         };
-        let m = Module {
-            name: left.to_string(),
+        let module = Module {
+            name: module_name.to_string(),
             kind,
             inputs: HashMap::new(),
-            outputs: right.split(", ").map(str::to_string).collect(),
+            outputs: module_outputs.split(", ").map(String::from).collect(),
             state: 0,
         };
-        modules.insert(left.to_string(), m);
+        modules.insert(module_name.to_string(), module);
     }
 
     for line in input.lines() {
-        let (mut left, right) = line.split_once(" -> ").unwrap();
-        if let Some(stripped_left) = left.strip_prefix(['&', '%']) {
-            left = stripped_left;
+        let (mut module_name, outputs) = line.split_once(" -> ").unwrap();
+        if let Some(stripped_name) = module_name.strip_prefix(['&', '%']) {
+            module_name = stripped_name;
         }
-        for module in right.split(", ") {
-            if let Some(m) = modules.get_mut(module) {
-                m.inputs.insert(left.to_string(), 0);
+        for output in outputs.split(", ") {
+            if let Some(module) = modules.get_mut(output) {
+                module.inputs.insert(module_name.to_string(), 0);
             }
         }
     }
 
-    let mut pulses = VecDeque::new();
-    for i in 0.. {
-        let mut low_rx_count = 0;
-        let mut high_rx_count = 0;
-
-        pulses.push_back(Pulse {
+    let rx_conjunction = modules
+        .iter()
+        .find_map(|(name, module)| module.outputs.iter().any(|o| o == "rx").then_some(name))
+        .unwrap();
+    let rx_conjunction_inputs: Vec<_> = modules
+        .iter()
+        .filter_map(|(name, module)| {
+            module
+                .outputs
+                .iter()
+                .any(|o| o == rx_conjunction)
+                .then_some(name.clone())
+        })
+        .collect();
+    let mut conjunction_cycles = vec![0; rx_conjunction_inputs.len()];
+    let mut pulse_queue = VecDeque::new();
+    'outer: for i in 0.. {
+        pulse_queue.push_back(Pulse {
             src: "button".to_string(),
             dst: "broadcaster".to_string(),
             pulse: 0,
         });
 
-        while let Some(pulse) = pulses.pop_front() {
+        while let Some(pulse) = pulse_queue.pop_front() {
+            if rx_conjunction_inputs.contains(&pulse.src) && pulse.pulse == 1 {
+                let Some(input) = conjunction_cycles.iter_mut().find(|i| **i == 0) else {
+                    break 'outer;
+                };
+                *input = i + 1;
+            }
             let Some(dst_module) = modules.get_mut(&pulse.dst) else {
-                if pulse.pulse == 0 {
-                    low_rx_count += 1;
-                } else {
-                    high_rx_count += 1;
-                }
                 continue;
             };
-            let response_pulses = dst_module.process_pulse(pulse);
-            response_pulses
-                .into_iter()
-                .for_each(|p| pulses.push_back(p));
-        }
-
-        if low_rx_count == 1 {
-            println!("{i}");
-            break;
-        } else {
-            println!("{low_rx_count}/{high_rx_count}");
+            for response_pulse in dst_module.process_pulse(pulse) {
+                pulse_queue.push_back(response_pulse);
+            }
         }
     }
+    println!("{}", total_lcm(conjunction_cycles).unwrap());
+}
+
+fn total_lcm(nums: Vec<u64>) -> Option<u64> {
+    nums.into_iter().reduce(lcm)
+}
+
+fn gcd(a: u64, b: u64) -> u64 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    (a * b) / gcd(a, b)
 }
