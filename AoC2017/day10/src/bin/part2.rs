@@ -37,7 +37,7 @@ fn main() {
     let hex: String = nums
         .chunks(16)
         .map(|chunk| chunk.iter().copied().reduce(|acc, n| acc ^ n).unwrap())
-        .map(|x| format!("{:x}", x))
+        .map(|x| format!("{:02x}", x))
         .collect();
     println!("{hex}");
 }
