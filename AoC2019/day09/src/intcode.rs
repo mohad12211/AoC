@@ -14,8 +14,9 @@ impl Program {
             relative_base: 0,
         }
     }
-    pub fn run(&mut self, input: Vec<i64>) -> Option<i64> {
+    pub fn run(&mut self, input: Vec<i64>) -> (Vec<i64>, bool) {
         let mut input = VecDeque::from(input);
+        let mut output = Vec::new();
         loop {
             let instruction = self.read(self.ip);
             let (opcode, parameters_modes) = self.parse_instruction(instruction);
@@ -37,13 +38,17 @@ impl Program {
                 }
                 3 => {
                     let dst = self.get_write_parameter(1, &parameters_modes);
-                    self.write(dst, input.pop_front().unwrap());
+                    if let Some(input_value) = input.pop_front() {
+                        self.write(dst, input_value);
+                    } else {
+                        return (output, false);
+                    }
                     self.ip += 2;
                 }
                 4 => {
                     let output_value = self.get_read_parameter(1, &parameters_modes);
                     self.ip += 2;
-                    return Some(output_value);
+                    output.push(output_value);
                 }
                 5 => {
                     let cond = self.get_read_parameter(1, &parameters_modes);
@@ -93,7 +98,7 @@ impl Program {
                 _ => unreachable!(),
             };
         }
-        None
+        (output, true)
     }
     fn parse_instruction(&self, ins: i64) -> (i64, Vec<i64>) {
         (

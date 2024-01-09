@@ -11,7 +11,11 @@ fn main() {
         .collect();
 
     let mut program = Program::new(&memory);
-    while let Some(output) = program.run(vec![1]) {
-        println!("{output}");
+    loop {
+        let (output, halted) = program.run(vec![1]);
+        println!("{output:?}");
+        if halted {
+            break;
+        }
     }
 }
