@@ -13,7 +13,7 @@ fn main() {
         for col in 0..rows {
             for dr in -1..=1 {
                 for dc in -1..=1 {
-                    if (0..=3)
+                    if (0..word.len() as i32)
                         .map(|k| (row + dr * k, col + dc * k))
                         .zip(word.iter())
                         .all(|((row, col), letter)| {
