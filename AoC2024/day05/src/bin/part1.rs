@@ -15,7 +15,7 @@ fn main() {
             .or_insert(vec![right]);
     }
 
-    let mut allowed = Vec::new();
+    let mut result = 0;
     for line in updates.lines() {
         let numbers: Vec<_> = line.split(',').collect();
         if numbers.iter().enumerate().all(|(index, number)| {
@@ -24,16 +24,11 @@ fn main() {
                 .cloned()
                 .unwrap_or_default()
                 .iter()
-                .all(|n| !numbers[..=index].contains(n))
+                .all(|n| !numbers[..index].contains(n))
         }) {
-            allowed.push(numbers);
+            result += numbers[numbers.len() / 2].parse::<i32>().unwrap();
         }
     }
-
-    let result: i32 = allowed
-        .into_iter()
-        .map(|l| l[l.len() / 2].parse::<i32>().unwrap())
-        .sum();
 
     println!("{result}");
 }
